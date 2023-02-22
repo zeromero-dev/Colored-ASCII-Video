@@ -60,7 +60,7 @@ display_choice = questionary.select(
 path = None
 if display_choice == display_modes[0]:
     # Input video url
-    video_url = input("[*]Enter video URL: ")
+    video_url = str(input("[*]Enter video URL: "))
 
     #Downloads video, returns path to file
     path = downloadVid.download_video(video_url)
