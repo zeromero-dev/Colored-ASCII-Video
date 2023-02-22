@@ -5,6 +5,7 @@ import questionary
 import time
 from ffpyplayer.player import MediaPlayer
 from pytube import YouTube
+import subprocess
 import downloadVid #local import that download the video
 
 #------------------------
@@ -79,78 +80,95 @@ def grayscale(rgb):
     brightness = (r + g + b) / 3
     return brightness
 
-def print_frame(img, frame_time):
+def print_frame(img, frame_time, out_file=None):
     player.set_pause(False)
     current_time = time.time()
     #Take image, turn greyscale, resize
+    if out_file is not None:
+        # Create FFmpeg command to write video frames to file
+        command = ['ffmpeg', '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo',
+                   '-s', f'{small_img.shape[1]}x{small_img.shape[0]}', '-pix_fmt', 'rgb24', '-r', str(fps),
+                   '-i', '-', '-an', '-vcodec', 'libx264', out_file]
 
+        # Write video frames to FFmpeg process
+        ffmpeg_process = subprocess.Popen(command, stdin=subprocess.PIPE)
+
+        for col in small_img:
+            for row in col:
+                brightness = grayscale(row)
+                character = ascii_scheme[int(brightness // magic_num)]
+                ffmpeg_process.stdin.write(bytes(row))
+
+        ffmpeg_process.stdin.close()
+        ffmpeg_process.wait()
+    else:
     #Find maximum number of characters based on terminal size
     #Check terminal size in loop to be fancy
-    terminal = os.get_terminal_size()
-    term_width = terminal.columns
-    term_height = terminal.lines
+        terminal = os.get_terminal_size()
+        term_width = terminal.columns
+        term_height = terminal.lines
 
-    #Needs to be even to center neatly
-    if term_width % 2 != 0:
-        term_width -= 1
+        #Needs to be even to center neatly
+        if term_width % 2 != 0:
+            term_width -= 1
 
-    height = img.shape[0]
-    width = img.shape[1]
-    #How much width per height for original to keep aspect ratio
-    original_ratio = width / height
+        height = img.shape[0]
+        width = img.shape[1]
+        #How much width per height for original to keep aspect ratio
+        original_ratio = width / height
 
-    width_ratio = term_width / width
-    height_ratio = term_height / height
+        width_ratio = term_width / width
+        height_ratio = term_height / height
 
-    if mode == 1:
-        #Doesn't work on vertical monitor
-        width_ratio = height_ratio * original_ratio * ASPECT_RATIO
-        small_img = cv2.resize(img, (0, 0), fx=width_ratio, fy=height_ratio)
-    elif mode == 2:
-        #Doesn't work on vertical monitor
-        small_img = cv2.resize(img, (0, 0), fx=width_ratio, fy=height_ratio)
+        if mode == 1:
+            #Doesn't work on vertical monitor
+            width_ratio = height_ratio * original_ratio * ASPECT_RATIO
+            small_img = cv2.resize(img, (0, 0), fx=width_ratio, fy=height_ratio)
+        elif mode == 2:
+            #Doesn't work on vertical monitor
+            small_img = cv2.resize(img, (0, 0), fx=width_ratio, fy=height_ratio)
 
-    #Find how much needs to be cleared every new frame
-    small_height = small_img.shape[0]
-    small_width = small_img.shape[1]
+        #Find how much needs to be cleared every new frame
+        small_height = small_img.shape[0]
+        small_width = small_img.shape[1]
 
-    #How much of the brightness each character occupies
-    magic_num = 255/(len(ascii_scheme)-1.001)
-    #This does the actual job
-    ascii = ""
-    for col in small_img:
-        size_difference = term_width - small_width
+        #How much of the brightness each character occupies
+        magic_num = 255/(len(ascii_scheme)-1.001)
+        #This does the actual job
+        ascii = ""
+        for col in small_img:
+            size_difference = term_width - small_width
 
-        if size_difference > 1:
-            for i in range(int(size_difference/2 + 1)):
-                ascii += " "
+            if size_difference > 1:
+                for i in range(int(size_difference/2 + 1)):
+                    ascii += " "
 
-        for row in col:
-            brightness = grayscale(row)
-            character = ascii_scheme[int(brightness // magic_num)];
-            ascii += f'\x1b[38;2;{row[2]};{row[1]};{row[0]}m{character}'
-        ascii += "\n"
+            for row in col:
+                brightness = grayscale(row)
+                character = ascii_scheme[int(brightness // magic_num)];
+                ascii += f'\x1b[38;2;{row[2]};{row[1]};{row[0]}m{character}'
+            ascii += "\n"
 
-    print(ascii[:-1], end="")
+        print(ascii[:-1], end="")
+        while True:
+            if time.time() - current_time <= frame_time:
+                pass
+            else:
+                sys.stdout.write(f"\033[{small_height + 1}F") # Cursor up n lines
+                player.set_pause(True)
+                break
+
+    fps = video.get(cv2.CAP_PROP_FPS)
+    print(f"FPS is {fps}")
+    frame_time = 1 / fps
+    # frame_time -= 0.001
+
+    audio_frame, val = player.get_frame()
+
     while True:
-        if time.time() - current_time <= frame_time:
-            pass
+        success, image = video.read()
+
+        if success == True:
+            print_frame(image, frame_time)
         else:
-            sys.stdout.write(f"\033[{small_height + 1}F") # Cursor up n lines
-            player.set_pause(True)
             break
-
-fps = video.get(cv2.CAP_PROP_FPS)
-print(f"FPS is {fps}")
-frame_time = 1 / fps
-# frame_time -= 0.001
-
-audio_frame, val = player.get_frame()
-
-while True:
-    success, image = video.read()
-
-    if success == True:
-        print_frame(image, frame_time)
-    else:
-        break
