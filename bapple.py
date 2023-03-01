@@ -7,11 +7,7 @@ from ffpyplayer.player import MediaPlayer
 from pytube import YouTube
 import downloadVid #local import that download the video
 
-#------------------------
-#If you don't want to download the video, comment out 7th line 
-# and change the path to the video you want to use on line 36
-#------------------------
-
+#------------------------#
 #To Add
 #Multithread
 #Cleanup
@@ -57,6 +53,11 @@ display_choice = questionary.select(
     choices=display_modes
 ).ask()
 
+save_choice = questionary.select(
+    "Would you like to save the video as an ASCII file ?",
+    choices=["Yes", "No"]
+).ask()
+print(save_choice)
 path = None
 if display_choice == display_modes[0]:
     # Input video url
@@ -143,14 +144,28 @@ def print_frame(img, frame_time):
 fps = video.get(cv2.CAP_PROP_FPS)
 print(f"FPS is {fps}")
 frame_time = 1 / fps
-# frame_time -= 0.001
 
 audio_frame, val = player.get_frame()
 
-while True:
-    success, image = video.read()
+if save_choice == "Yes":
+    #Make a videofile from the provided ascii and audio input
+    # Needs to be done
+    pass
+else:
+    while True:
+        success, image = video.read()
 
-    if success == True:
-        print_frame(image, frame_time)
-    else:
-        break
+        if success == True:
+            print_frame(image, frame_time)
+        else:
+            break
+
+
+# while True:
+#     success, image = video.read()
+
+#     if success == True:
+#         print_frame(image, frame_time)
+#         #Make a videofile from the provided ascii
+#     else:
+#         break

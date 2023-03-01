@@ -7,7 +7,8 @@ import re
 
 def download_video(video_url) -> str:
     yt = YouTube(video_url)
-    
+    # Clears the string from invalid characters,
+    # so that it can be used as a path
     filename = re.sub(r'[\\/*?:"<>|]', '', str(yt.title)) + ".mp4"
 
     file_path = os.path.join("Video/", filename)
@@ -24,7 +25,7 @@ def download_video(video_url) -> str:
     total_size = int(response.headers.get("Content-Length", 0))
     block_size = 1024
     wrote = 0 
-     
+    
     with open(file_path, "wb") as f:
         for data in tqdm(response.iter_content(block_size), total=math.ceil(total_size//block_size), unit="KB", unit_scale=True):
             wrote = wrote  + len(data)
