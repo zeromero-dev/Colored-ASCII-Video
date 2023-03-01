@@ -3,11 +3,13 @@ from pytube import YouTube
 import requests
 from tqdm import tqdm
 import math
+import re
 
 def download_video(video_url) -> str:
     yt = YouTube(video_url)
     
-    filename = yt.title + ".mp4"
+    filename = re.sub(r'[\\/*?:"<>|]', '', str(yt.title)) + ".mp4"
+
     file_path = os.path.join("Video/", filename)
 
     #If file already exists, don't download it again
